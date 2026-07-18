@@ -1,76 +1,72 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GIS Multimedia Map</title>
+<meta charset="utf-8">
+<title>GIS Multimedia Map</title>
 
-    ium.com/downloads/cesiumjs/releases/1.133/Build/Cesium/Cesium.js"></script>
+https://cesium.com/downloads/cesiumjs/releases/1.133/Build/Cesium/Cesium.js"></script>
+cesiumjs/releases/1.133/Build/Cesium/Widgets/widgets.css"
+    rel="stylesheet">
 
-    cesium.com/downloads/cesiumjs/releases/1.133/Build/Cesium/Widgets/widgets.css"
-        rel="stylesheet"
-    />
+<style>
+html, body, #cesiumContainer {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
 
-    <style>
-        html, body, #cesiumContainer {
-            width: 100%;
-            height: 100%;
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-        }
+#panel {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 999;
+    background: white;
+    padding: 10px;
+    border-radius: 8px;
+    width: 280px;
+}
 
-        #toolbar {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            z-index: 1000;
-            background: white;
-            padding: 10px;
-            border-radius: 8px;
-            max-width: 300px;
-        }
+input, textarea {
+    width: 100%;
+    margin-bottom: 5px;
+    box-sizing: border-box;
+}
 
-        input, textarea {
-            width: 100%;
-            margin-bottom: 5px;
-        }
+button {
+    width: 100%;
+    padding: 8px;
+    background: #0078d7;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
 
-        button {
-            width: 100%;
-            padding: 8px;
-            background: #0078D7;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-
-        button:hover {
-            background: #005fa3;
-        }
-    </style>
+button:hover {
+    background: #005ea2;
+}
+</style>
 </head>
 
 <body>
 
-<div id="toolbar">
-    <h3>Add Location</h3>
+<div id="panel">
+    <h3>Add Marker</h3>
 
-    <input id="title" type="text" placeholder="Title">
+    <input id="title" placeholder="Title">
 
     <textarea id="description"
         placeholder="Description"></textarea>
 
-    <input id="imageUrl"
-        type="text"
+    <input id="image"
         placeholder="Image URL">
 
-    <input id="videoUrl"
-        type="text"
+    <input id="video"
         placeholder="YouTube Embed URL">
 
-    <button id="activate">
-        Click Map To Add Marker
+    <button id="addButton">
+        Enable Add Marker
     </button>
 </div>
 
@@ -78,30 +74,20 @@
 
 <script>
 
-Cesium.Ion.defaultAccessToken = "";
-
 const viewer = new Cesium.Viewer("cesiumContainer", {
-    terrain: Cesium.Terrain.fromWorldTerrain()
-});
-
-viewer.camera.flyTo({
-    destination: Cesium.Cartesian3.fromDegrees(
-        21.616,
-        63.095,
-        15000
-    )
+    animation: false,
+    timeline: false,
+    baseLayerPicker: true
 });
 
 let addMode = false;
 
-document.getElementById("activate")
-.addEventListener("click", () => {
+document.getElementById("addButton")
+.addEventListener("click", function() {
 
     addMode = true;
 
-    alert(
-        "Click on the map to place a marker."
-    );
+    alert("Now click anywhere on the globe.");
 });
 
 const handler =
@@ -109,50 +95,76 @@ new Cesium.ScreenSpaceEventHandler(
     viewer.scene.canvas
 );
 
-handler.setInputAction(function(click){
+handler.setInputAction(function(click) {
 
-    if(!addMode) return;
+    if (!addMode) return;
 
-    const position =
-    viewer.scene.pickPosition(
-        click.position
-    );
+    const ellipsoid =
+        viewer.scene.globe.ellipsoid;
 
-    if(!position) return;
+    const cartesian =
+        viewer.camera.pickEllipsoid(
+            click.position,
+            ellipsoid
+        );
+
+    if (!cartesian) {
+        alert("Please click directly on the globe.");
+        return;
+    }
 
     const cartographic =
-    Cesium.Cartographic.fromCartesian(
-        position
-    );
+        Cesium.Cartographic.fromCartesian(
+            cartesian
+        );
 
-    const lon =
-    Cesium.Math.toDegrees(
-        cartographic.longitude
-    );
+    const longitude =
+        Cesium.Math.toDegrees(
+            cartographic.longitude
+        );
 
-    const lat =
-    Cesium.Math.toDegrees(
-        cartographic.latitude
-    );
+    const latitude =
+        Cesium.Math.toDegrees(
+            cartographic.latitude
+        );
 
     const title =
         document.getElementById("title").value;
 
-    const desc =
+    const description =
         document.getElementById("description").value;
 
     const image =
-        document.getElementById("imageUrl").value;
+        document.getElementById("image").value;
 
     const video =
-        document.getElementById("videoUrl").value;
+        document.getElementById("video").value;
+
+    let popup = `
+        <h2>${title}</h2>
+        <p>${description}</p>
+    `;
+
+    if (image) {
+        popup += `
+        ${image}
+        `;
+    }
+
+    if (video) {
+        popup += `
+        <br><br>
+        ${video}
+        </iframe>
+        `;
+    }
 
     viewer.entities.add({
 
         position:
             Cesium.Cartesian3.fromDegrees(
-                lon,
-                lat
+                longitude,
+                latitude
             ),
 
         point: {
@@ -161,54 +173,32 @@ handler.setInputAction(function(click){
         },
 
         label: {
-            text: title,
+            text: title || "Marker",
             pixelOffset:
-            new Cesium.Cartesian2(
-                0,
-                -25
-            )
+                new Cesium.Cartesian2(
+                    0,
+                    -25
+                )
         },
 
-        description: `
-
-            <h2>${title}</h2>
-
-            <p>${desc}</p>
-
-            ${
-                image
-                ? `${image}`
-                : ''
-            }
-
-            <br><br>
-
-            ${
-                video
-                ? `
-                ${video}
-                </iframe>
-                `
-                : ''
-            }
-
-            <hr>
-
-            <b>Latitude:</b>
-            ${lat.toFixed(6)}
-
-            <br>
-
-            <b>Longitude:</b>
-            ${lon.toFixed(6)}
-
-        `
+        description: popup
     });
 
     addMode = false;
 
+    alert("Marker added!");
+
 },
 Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+viewer.camera.flyTo({
+    destination:
+        Cesium.Cartesian3.fromDegrees(
+            21.616,
+            63.095,
+            3000000
+        )
+});
 
 </script>
 
