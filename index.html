@@ -1,32 +1,205 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
 <head>
-<meta charset="utf-8">
-<title>Cesium Test</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GIS Multimedia Map</title>
 
-1.133/Build/Cesium/Widgets/widgets.css"
-  rel="stylesheet">
+    <link rel="stylesheet"
+        href="https://unpkg.com/gets.css
 
-https://unpkg.com/cesium@1.133/Build/Cesium/Cesium.js
+    https://unpkg.com/cesium@1.133/Build/Cesium/Cesium.js
 
-<style>
-html, body, #map {
-    width: 100%;
-    height: 100%;
-    margin: 0;
-}
-</style>
+    <style>
+        html,
+        body,
+        #cesiumContainer {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        #toolbar {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 1000;
+            background: white;
+            padding: 12px;
+            width: 320px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+        }
+
+        input,
+        textarea {
+            width: 100%;
+            margin-bottom: 8px;
+            box-sizing: border-box;
+            padding: 6px;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            background: #0078d7;
+            color: white;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #005fa3;
+        }
+    </style>
 </head>
 
 <body>
 
-<div id="map"></div>
+    <div id="toolbar">
+        <h3>Add Location</h3>
 
-<script>
-console.log("Cesium:", Cesium);
+        <input id="title" placeholder="Title">
 
-const viewer = new Cesium.Viewer("map");
-</script>
+        <textarea id="description" rows="3"
+            placeholder="Description"></textarea>
+
+        <input id="imageUrl"
+            placeholder="Image URL">
+
+        <input id="videoUrl"
+            placeholder="YouTube Embed URL">
+
+        <button id="activateBtn">
+            Click Map To Add Marker
+        </button>
+    </div>
+
+    <div id="cesiumContainer"></div>
+
+    <script>
+
+        console.log("Cesium loaded:", Cesium);
+
+        const viewer = new Cesium.Viewer("cesiumContainer", {
+            animation: false,
+            timeline: false
+        });
+
+        viewer.camera.flyTo({
+            destination: Cesium.Cartesian3.fromDegrees(
+                21.616,
+                63.095,
+                3000000
+            )
+        });
+
+        let addMode = false;
+
+        document.getElementById("activateBtn")
+            .addEventListener("click", () => {
+
+                addMode = true;
+
+                alert("Click somewhere on the globe.");
+            });
+
+        const handler =
+            new Cesium.ScreenSpaceEventHandler(
+                viewer.scene.canvas
+            );
+
+        handler.setInputAction(function (click) {
+
+            if (!addMode) return;
+
+            const cartesian =
+                viewer.camera.pickEllipsoid(
+                    click.position,
+                    viewer.scene.globe.ellipsoid
+                );
+
+            if (!cartesian) {
+                alert("Please click directly on the globe.");
+                return;
+            }
+
+            const cartographic =
+                Cesium.Cartographic.fromCartesian(
+                    cartesian
+                );
+
+            const longitude =
+                Cesium.Math.toDegrees(
+                    cartographic.longitude
+                );
+
+            const latitude =
+                Cesium.Math.toDegrees(
+                    cartographic.latitude
+                );
+
+            const title =
+                document.getElementById("title").value;
+
+            const description =
+                document.getElementById("description").value;
+
+            const imageUrl =
+                document.getElementById("imageUrl").value;
+
+            const videoUrl =
+                document.getElementById("videoUrl").value;
+
+            let popup = `
+                <h2>${title}</h2>
+                <p>${description}</p>
+            `;
+
+            if (imageUrl) {
+                popup += `
+                    ${imageUrl}
+                `;
+            }
+
+            if (videoUrl) {
+                popup += `
+                    <br><br>
+                    ${videoUrl}
+                    </iframe>
+                `;
+            }
+
+            viewer.entities.add({
+                position:
+                    Cesium.Cartesian3.fromDegrees(
+                        longitude,
+                        latitude
+                    ),
+
+                point: {
+                    pixelSize: 12,
+                    color: Cesium.Color.RED
+                },
+
+                label: {
+                    text: title || "Marker",
+                    pixelOffset:
+                        new Cesium.Cartesian2(0, -20)
+                },
+
+                description: popup
+            });
+
+            addMode = false;
+
+        }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+    </script>
 
 </body>
+
 </html>
